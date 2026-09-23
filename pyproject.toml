@@ -173,6 +173,8 @@ speech = [
     "soundfile>=0.12",
 ]
 speech-deepgram = ["deepgram-sdk>=3.0"]
+# Local German TTS (Piper). Note: piper-tts is GPL-3.0 licensed.
+piper = ["piper-tts>=1.3", "numpy>=1.24", "soundfile>=0.12"]
 eval-wandb = ["wandb>=0.17"]
 eval-sheets = ["gspread>=6.0", "google-auth>=2.0"]
 mining-pearl-cpu = [
