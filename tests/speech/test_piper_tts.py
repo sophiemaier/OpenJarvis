@@ -123,3 +123,10 @@ def test_available_voices_include_german_and_downloaded(fake_piper, tmp_path):
 
 def test_health_true_with_piper(fake_piper, tmp_path):
     assert _backend(tmp_path).health() is True
+
+
+def test_non_piper_voice_id_falls_back_to_default(fake_piper, tmp_path):
+    backend = _backend(tmp_path)
+    result = backend.synthesize("Hallo", voice_id="sophia")
+    assert result.audio
+    assert fake_piper == ["de_DE-kerstin-low"]

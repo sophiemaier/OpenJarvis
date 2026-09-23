@@ -146,3 +146,29 @@ def test_synthesis_failure_falls_back_without_retrying_or_leaking_voice(monkeypa
         ("kokoro", "bm_george"),
     ]
     assert played == [b"wav", b"wav"]
+
+
+def test_record_voice_passes_configured_language(monkeypatch):
+    import types
+
+    from openjarvis.cli import _voice_chat as vc
+
+    seen = {}
+
+    class STT:
+        def transcribe(self, audio, **kwargs):
+            seen.update(kwargs)
+            return types.SimpleNamespace(text="Hallo")
+
+    class Console:
+        def print(self, *a, **k):
+            pass
+
+    cfg = types.SimpleNamespace(speech=types.SimpleNamespace(language="de"))
+    session = vc.VoiceSession(cfg)
+    session._stt_resolved, session._stt_backend = True, STT()
+    monkeypatch.setattr(
+        "openjarvis.speech.voice_io.record_until_silence", lambda: b"wav"
+    )
+    assert vc.record_voice(Console(), session) == "Hallo"
+    assert seen == {"format": "wav", "language": "de"}

@@ -14,6 +14,8 @@ downloaded automatically from Hugging Face on first use.
 from __future__ import annotations
 
 import io
+import logging
+import re
 import threading
 import wave
 from pathlib import Path
@@ -23,7 +25,10 @@ from openjarvis.core.config import get_config_dir
 from openjarvis.core.registry import TTSRegistry
 from openjarvis.speech.tts import TTSBackend, TTSResult
 
+logger = logging.getLogger(__name__)
+
 _DEFAULT_VOICE_ID = "de_DE-kerstin-low"
+_PIPER_VOICE_RE = re.compile(r"^[a-z]{2,3}_[A-Z]{2}-[A-Za-z0-9_]+-(x_low|low|medium|high)$")
 
 # German Piper voices (see https://huggingface.co/rhasspy/piper-voices).
 _GERMAN_VOICES: List[str] = [
@@ -42,15 +47,23 @@ _GERMAN_VOICES: List[str] = [
 def _parse_voice_id(voice_id: str) -> Tuple[str, Optional[int]]:
     """Split ``name:speaker`` into (name, speaker_id)."""
     voice_id = (voice_id or _DEFAULT_VOICE_ID).strip()
+    name, speaker_id = voice_id, None
     if ":" in voice_id:
         name, _, speaker = voice_id.partition(":")
         try:
-            return name, int(speaker)
+            speaker_id = int(speaker)
         except ValueError as exc:
             raise ValueError(
                 f"Invalid Piper speaker index in voice_id {voice_id!r}"
             ) from exc
-    return voice_id, None
+    if not _PIPER_VOICE_RE.match(name):
+        # Not a Piper voice name (e.g. a Chatterbox reference voice left in
+        # speech.voice_id). Speak with the default voice instead of failing.
+        logger.warning(
+            "voice_id %r is not a Piper voice; using %s", voice_id, _DEFAULT_VOICE_ID
+        )
+        return _DEFAULT_VOICE_ID, None
+    return name, speaker_id
 
 
 @TTSRegistry.register("piper")

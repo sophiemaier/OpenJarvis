@@ -78,6 +78,14 @@ class VoiceSession:
                 continue
         return None
 
+    def get_stt_language(self) -> str:
+        """Return the configured STT language (e.g. ``de``), or ``""`` for auto."""
+        from openjarvis.core.config import load_config
+
+        config = self._config if self._config is not None else load_config()
+        speech = getattr(config, "speech", None)
+        return (getattr(speech, "language", "") or "").strip()
+
     def get_voice_preferences(self) -> tuple[str, str, float]:
         """Resolve configured (tts_backend, voice_id, speed), cached per session."""
         if self._voice_prefs is None:
@@ -163,7 +171,13 @@ def record_voice(
 
     console.print("[dim]Transcribing…[/dim]")
     try:
-        result = backend.transcribe(audio_bytes, format="wav")
+        # Honor speech.language: auto-detection misreads short German
+        # utterances (e.g. "Hallo") as other languages.
+        stt_kwargs: dict[str, Any] = {}
+        language = active_session.get_stt_language()
+        if language:
+            stt_kwargs["language"] = language
+        result = backend.transcribe(audio_bytes, format="wav", **stt_kwargs)
         text = result.text.strip()
         if text:
             console.print(f"[bold]You (voice):[/bold] {_terminal_safe_text(text)}")
